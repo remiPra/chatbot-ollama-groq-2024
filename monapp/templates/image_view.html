@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image View</title>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <h1>Image View</h1>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="file" name="image" accept="image/*">
+        <input type="submit" value="Submit">
+    </form>
+
+    {% if image_base64 %}
+    <h2>Image</h2>
+    <img src="data:image/jpeg;base64,{{ image_base64 }}" alt="Uploaded Image">
+    {% endif %}
+
+    {% if response %}
+    <h2>Response</h2>
+    <p>{{ response }}</p>
+    {% endif %}
+</body>
+</html>

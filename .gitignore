@@ -1,0 +1,33 @@
+*.py[cod]
+__pycache__/
+
+# Base de données locale SQLite
+*.sqlite3
+*.sqlite3-journal
+
+# Fichiers de journal
+*.log
+
+# Si vous utilisez Environnement Virtuel, ignorez-le
+env/
+.venv/
+venv/
+
+# Fichiers .env pour les variables d'environnement
+.env
+
+# Dossier des médias si vous en avez un pour les fichiers uploadés par les utilisateurs
+media/
+
+# Dossier static si vous collectez les fichiers statiques ici
+static/
+
+# Fichiers de cache de développement de Django
+*.sass-cache
+.cache
+*.css.map
+*.js.map
+
+# Fichiers et dossiers pour d'autres systèmes d'exploitation
+.DS_Store
+Thumbs.db

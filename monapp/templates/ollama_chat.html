@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chatbot with ChatOllama</title>
+    <style>
+        .linput {
+            position: fixed;
+            bottom: 10px;
+            left: 0;
+            width: 100%;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+        }
+
+        button {
+            background: #5a22a3;
+            padding: 7px;
+            color: white;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+    <h1>Hello! I'm your friendly ChatOllama chatbot.</h1>
+    <p>I can help answer your questions, provide information, or just chat. Let's start our conversation!</p>
+    <button id="start-stop-btn">Démarrer la reconnaissance vocale</button>
+    <button id="stop-audio-btn">Arrêter l'audio</button>
+
+    <p>Texte reconnu : <span id="recognized-text"></span></p>
+    <div id="chat-history">
+        {% for message in chat_history %}
+        <p><strong>You:</strong> {{ message.human }}</p>
+        <p>{{ message.AI }}</p>
+        {% endfor %}
+    </div>
+
+    <form class="linput" method="post">
+        {% csrf_token %}
+        <input type="text" id="question" name="question" required>
+        <div id="measure"
+            style="position: absolute; visibility: hidden; height: auto; width: auto; white-space: nowrap;"></div>
+
+        <button type="submit">Submit</button>
+    </form>
+    <form method="post" action="{% url 'clear_memory' %}">
+        {% csrf_token %}
+        <button type="submit">Clear Memory</button>
+    </form>
+    <div id="loading" style="display: none;">Loading...</div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        const form = document.querySelector('.linput');
+        const loadingIndicator = document.getElementById('loading');
+        const chatHistoryDiv = document.getElementById('chat-history');
+        const questionInput = document.getElementById('question');
+        const stopAudioBtn = document.getElementById('stop-audio-btn');
+
+
+        function getAudioFromOpenAI(text) {
+            const openaiApiKey = '{{ openai_api_key }}'; // Assurez-vous de passer la clé API OpenAI depuis la vue Django
+
+            const requestBody = {
+                "model": "tts-1",
+                "input": text,
+                "voice": "nova"
+            };
+
+            const headers = {
+                "Authorization": `Bearer ${openaiApiKey}`,
+                "Content-Type": "application/json"
+            };
+
+            return fetch("https://api.openai.com/v1/audio/speech", {
+                method: "POST",
+                headers: headers,
+                body: JSON.stringify(requestBody)
+            })
+                .then(response => {
+                    if (response.ok) {
+                        return response.blob();
+                    } else {
+                        throw new Error(`Erreur lors de la récupération de la réponse vocale: ${response.statusText}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                });
+        }
+
+        // ... (votre code JavaScript existant)
+
+
+
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const synth = window.speechSynthesis;
+
+            const playTextAsAudio = (text) => {
+                const synth = window.speechSynthesis;
+                const utterance = new SpeechSynthesisUtterance(text);
+                synth.speak(utterance);
+            };
+            const stopAudio = () => {
+                synth.cancel();
+                // stopAudioBtn.style.display = 'none'; // Cacher le bouton après avoir arrêté l'audio
+            };
+
+            stopAudioBtn.addEventListener('click', stopAudio);
+
+
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                loadingIndicator.style.display = 'block';
+                console.log("hello")
+                console.log(questionInput.value)
+
+                $.ajax({
+                    type: 'POST',
+                    url: "{% url 'ollama_chat' %}",
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    data: {
+                        'question': questionInput.value
+                    },
+                    success: function (data) {
+                        chatHistoryDiv.innerHTML += `<p><strong>You:</strong> ${data.human}</p><p>${data.AI}</p>`;
+                        // playTextAsAudio(data.AI); // Jouer la réponse de l'IA
+                        
+                        questionInput.value = '';  // Effacer le champ de saisie
+                    },
+                    error: function (error) {
+                        console.log(error.responseText)
+                        alert('There was a problem with the request.');
+                    },
+                    complete: function () {
+                        loadingIndicator.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const startStopBtn = document.getElementById('start-stop-btn');
+            const recognizedTextSpan = document.getElementById('recognized-text');
+            let listening = false;
+            const recognition = new window.webkitSpeechRecognition() || new window.SpeechRecognition();
+
+            recognition.lang = 'fr-FR';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onresult = (event) => {
+                const speechToText = event.results[0][0].transcript;
+                recognizedTextSpan.textContent = speechToText;
+                questionInput.value = speechToText;
+            };
+
+            recognition.onstart = () => {
+                listening = true;
+                startStopBtn.textContent = 'Arrêter la reconnaissance vocale';
+            };
+
+            recognition.onend = () => {
+                listening = false;
+                startStopBtn.textContent = 'Démarrer la reconnaissance vocale';
+            };
+
+            startStopBtn.addEventListener('click', () => {
+                if (listening) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('question');
+            const measure = document.getElementById('measure');
+
+            input.addEventListener('input', function () {
+                measure.innerHTML = input.value.replace(/ /g, '&nbsp;');
+                input.style.width = measure.offsetWidth + "px";
+            });
+        });
+    </script>
+</body>
+
+</html>
